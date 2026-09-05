@@ -2,5 +2,7 @@
   "name": "Laporan Beban Trafo Excel",
   "description": "Aplikasi konversi dan pembuat laporan hasil pengukuran beban dan tegangan trafo distribusi dari data Spreadsheet ke Excel sesuai format standar PLN.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
