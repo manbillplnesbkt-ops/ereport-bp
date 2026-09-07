@@ -4,11 +4,15 @@ import {
   RawTrafoRecord,
   compareTanggalAndNoGardu,
   assignAutoSequentialTimes,
+  formatNoGardu,
+  formatTanggalDDMMYYYY,
 } from '../types/trafo';
 
 // Normalize No Gardu for robust matching (e.g. "0180", "180", " 0180 ")
 export function normalizeGarduKey(noGardu: string | number | undefined): string {
   if (noGardu === undefined || noGardu === null) return '';
+  const formatted = formatNoGardu(noGardu);
+  if (formatted) return formatted.toUpperCase();
   const str = String(noGardu).trim().toUpperCase();
   // Remove leading zeroes for comparison if numeric, but preserve non-digit suffixes
   const numericMatch = str.match(/^0*([1-9][0-9]*.*)$/);
@@ -17,9 +21,22 @@ export function normalizeGarduKey(noGardu: string | number | undefined): string 
 
 // Helper to extract values from row object with various key spellings
 export function extractRowValue(row: Record<string, any>, ...candidateKeys: string[]): string {
+  const getCellStr = (v: any): string => {
+    if (v === undefined || v === null) return '';
+    if (typeof v === 'object') {
+      if (v instanceof Date) {
+        return formatTanggalDDMMYYYY(v);
+      }
+      if ('result' in v) return String(v.result ?? '').trim();
+      if ('text' in v) return String(v.text ?? '').trim();
+      if (Array.isArray(v.richText)) return v.richText.map((t: any) => t.text || '').join('').trim();
+    }
+    return String(v).trim();
+  };
+
   for (const key of candidateKeys) {
     if (row[key] !== undefined && row[key] !== null) {
-      const val = String(row[key]).trim();
+      const val = getCellStr(row[key]);
       if (val !== '') return val;
     }
   }
@@ -29,7 +46,7 @@ export function extractRowValue(row: Record<string, any>, ...candidateKeys: stri
     const candLower = cand.toLowerCase().replace(/[\s_.-]/g, '');
     for (const rk of rowKeys) {
       if (rk.toLowerCase().replace(/[\s_.-]/g, '') === candLower) {
-        const val = String(row[rk]).trim();
+        const val = getCellStr(row[rk]);
         if (val !== '') return val;
       }
     }
@@ -47,10 +64,10 @@ export function parseRawRow(
 
   const baseData = {
     id: `row-${targetType.toLowerCase()}-${index + 1}-${Date.now()}`,
-    tanggal: get('TANGGAL', 'Tanggal', 'tgl', 'DATE'),
+    tanggal: formatTanggalDDMMYYYY(get('TANGGAL', 'Tanggal', 'tgl', 'DATE', 'TGL/BLN', 'TGL / BLN', 'TGL_BLN', 'TGL.BLN')),
     unit: get('Unit Description', 'UNIT DESCRIPTION', 'UNIT_DESCRIPTION', 'Unit_Description', 'UNIT', 'Unit', 'LOKASI', 'Lokasi', 'ULP', 'ulp'),
     feeder: get('Description Penyulang', 'PENYULANG', 'Penyulang', 'Feeder', 'DESCRIPTION PENYULANG'),
-    noGardu: get('NO. GARDU', 'No Gardu', 'NO GARDU', 'No. Gardu', 'NO_GARDU', 'NO GD'),
+    noGardu: formatNoGardu(get('NO. GARDU', 'No Gardu', 'NO GARDU', 'No. Gardu', 'NO_GARDU', 'NO GD', 'No GD', 'GARDU', 'KODE GARDU', 'ID GARDU', 'NO')),
     kvaGardu: get('KVA GARDU', 'KVA', 'Daya Trafo', 'KVA_GARDU', 'DAYA'),
     rateNhFuse: get('RATE NH FUSE', 'NH FUSE', 'RATE_NH_FUSE', 'FUSE'),
     temuanTier1: get('TEMUAN TIER 1', 'Temuan Tier 1', 'TEMUAN TIER 1 DAN TIER 1&'),

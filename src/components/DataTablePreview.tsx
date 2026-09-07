@@ -5,6 +5,8 @@ import {
   formatUlpName,
   compareTanggalAndNoGardu,
   SortOrderMode,
+  formatNoGardu,
+  formatTanggalDDMMYYYY,
 } from '../types/trafo';
 import {
   Search,
@@ -54,8 +56,13 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
 
       if (!searchTerm) return true;
       const q = searchTerm.toLowerCase();
+      const noGFormatted = formatNoGardu(r.noGardu);
+      const tglFormatted = formatTanggalDDMMYYYY(r.tanggal);
       return (
         r.noGardu.toLowerCase().includes(q) ||
+        noGFormatted.toLowerCase().includes(q) ||
+        (r.tanggal && r.tanggal.toLowerCase().includes(q)) ||
+        (tglFormatted && tglFormatted.toLowerCase().includes(q)) ||
         r.unit.toLowerCase().includes(q) ||
         r.feeder.toLowerCase().includes(q) ||
         (r.keterangan && r.keterangan.toLowerCase().includes(q))
@@ -459,7 +466,7 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
                                   rowSpan={totalJurRows + 1}
                                   className="border border-slate-900 text-center font-bold align-middle bg-white font-mono"
                                 >
-                                  {rec.noGardu}
+                                  {formatNoGardu(rec.noGardu) || rec.noGardu}
                                 </td>
                                 <td
                                   rowSpan={totalJurRows + 1}
@@ -478,7 +485,7 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
                                   rowSpan={totalJurRows + 1}
                                   className="border border-slate-900 text-center align-middle bg-white whitespace-nowrap"
                                 >
-                                  {rec.tanggal}
+                                  {formatTanggalDDMMYYYY(rec.tanggal)}
                                 </td>
                                 <td
                                   rowSpan={totalJurRows + 1}

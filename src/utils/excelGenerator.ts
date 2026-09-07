@@ -5,6 +5,8 @@ import {
   formatUlpName,
   compareTanggalAndNoGardu,
   assignAutoSequentialTimes,
+  formatNoGardu,
+  formatTanggalDDMMYYYY,
 } from '../types/trafo';
 
 // Helper to sanitize and deduplicate Excel worksheet names
@@ -160,7 +162,7 @@ function populateFeederWorksheet(
   ws.mergeCells(hRow1, 5, hRow1, 6);
   ws.getCell(hRow1, 5).value = 'WAKTU PENGUKURAN';
   ws.mergeCells(hRow2, 5, hRow3, 5);
-  ws.getCell(hRow2, 5).value = 'TGL\nBLN';
+  ws.getCell(hRow2, 5).value = 'TGL / BLN';
   ws.mergeCells(hRow2, 6, hRow3, 6);
   ws.getCell(hRow2, 6).value = 'J A M';
 
@@ -290,10 +292,11 @@ function populateFeederWorksheet(
     noC.font = { name: 'Arial', size: 9, bold: true };
     noC.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // 2. No GD (Sorted A - Z)
+    // 2. No GD (Sorted A - Z) - Format 4 Digit (contoh: 0018)
     ws.mergeCells(startRow, 2, endRow, 2);
     const gdC = ws.getCell(startRow, 2);
-    gdC.value = rec.noGardu;
+    gdC.value = formatNoGardu(rec.noGardu);
+    gdC.numFmt = '@';
     gdC.font = { name: 'Arial', size: 9, bold: true };
     gdC.alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -314,7 +317,7 @@ function populateFeederWorksheet(
     // 5. TGL / BLN
     ws.mergeCells(startRow, 5, endRow, 5);
     const tglC = ws.getCell(startRow, 5);
-    tglC.value = rec.tanggal;
+    tglC.value = formatTanggalDDMMYYYY(rec.tanggal);
     tglC.font = { name: 'Arial', size: 9 };
     tglC.alignment = { horizontal: 'center', vertical: 'middle' };
 

@@ -4,6 +4,8 @@ import {
   ReportConfig,
   formatUlpName,
   assignAutoSequentialTimes,
+  formatNoGardu,
+  formatTanggalDDMMYYYY,
 } from './types/trafo';
 import {
   DEFAULT_RAW_CSV,
@@ -71,9 +73,14 @@ export default function App() {
   };
 
   const applyNewRecords = (newRecords: RawTrafoRecord[], message: string) => {
-    setRecords(newRecords);
+    const formattedRecords = newRecords.map((r) => ({
+      ...r,
+      noGardu: formatNoGardu(r.noGardu) || r.noGardu,
+      tanggal: formatTanggalDDMMYYYY(r.tanggal) || r.tanggal,
+    }));
+    setRecords(formattedRecords);
     const unitsFound = Array.from(
-      new Set(newRecords.map((r) => r.unit).filter((u): u is string => Boolean(u && u.trim() !== '')))
+      new Set(formattedRecords.map((r) => r.unit).filter((u): u is string => Boolean(u && u.trim() !== '')))
     );
     if (unitsFound.length === 1) {
       setConfig((prev) => ({

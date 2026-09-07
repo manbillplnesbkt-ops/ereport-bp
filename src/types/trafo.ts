@@ -110,55 +110,243 @@ export function formatUlpName(unitDesc: string | undefined): string {
   return `ULP ${trimmed.toUpperCase()}`;
 }
 
+/**
+ * Format No. Gardu menjadi minimal 4 digit angka (misal: 18 -> "0018", 1 -> "0001", 138 -> "0138")
+ * Menangani angka murni, angka berawalan/berakhiran huruf, serta format desimal Excel (18.0)
+ */
+export function formatNoGardu(val: string | number | undefined | null): string {
+  if (val === undefined || val === null) return '';
+  let str = String(val).trim();
+  if (!str) return '';
+
+  // Tangani kemungkinan desimal dari pembacaan float/Excel seperti "18.0"
+  str = str.replace(/\.0+$/, '');
+
+  // 1. Angka murni: 18 -> "0018", 1 -> "0001", 138 -> "0138"
+  if (/^\d+$/.test(str)) {
+    const num = parseInt(str, 10);
+    if (!isNaN(num)) {
+      return String(num).padStart(4, '0');
+    }
+    return str.padStart(4, '0');
+  }
+
+  // 2. Awalan teks diikuti angka (contoh: "GD 18" -> "GD 0018", "GD-18" -> "GD-0018")
+  const prefixMatch = str.match(/^([A-Za-z\s._/-]+?)(\d+)$/);
+  if (prefixMatch) {
+    const prefix = prefixMatch[1];
+    const num = parseInt(prefixMatch[2], 10);
+    return `${prefix}${String(num).padStart(4, '0')}`;
+  }
+
+  // 3. Angka diikuti akhiran teks (contoh: "18A" -> "0018A", "18-B" -> "0018-B")
+  const suffixMatch = str.match(/^(\d+)([A-Za-z\s._/-]+.*)$/);
+  if (suffixMatch) {
+    const num = parseInt(suffixMatch[1], 10);
+    const suffix = suffixMatch[2];
+    return `${String(num).padStart(4, '0')}${suffix}`;
+  }
+
+  return str;
+}
+
 export function compareNoGardu(a: { noGardu?: string }, b: { noGardu?: string }): number {
-  const aVal = (a.noGardu || '').trim();
-  const bVal = (b.noGardu || '').trim();
+  const aVal = formatNoGardu(a.noGardu);
+  const bVal = formatNoGardu(b.noGardu);
   return aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
 }
 
-export function parseDateTimestamp(val: string | number | undefined): number {
-  if (!val) return 0;
+const INDO_MONTHS: Record<string, number> = {
+  jan: 1, januari: 1, january: 1,
+  feb: 2, februari: 2, february: 2,
+  mar: 3, maret: 3, march: 3,
+  apr: 4, april: 4,
+  mei: 5, may: 5,
+  jun: 6, juni: 6, june: 6,
+  jul: 7, juli: 7, july: 7,
+  agu: 8, ags: 8, agustus: 8, aug: 8, august: 8,
+  sep: 9, sept: 9, september: 9,
+  okt: 10, oktober: 10, oct: 10, october: 10,
+  nov: 11, nop: 11, nopember: 11, november: 11,
+  des: 12, desember: 12, dec: 12, december: 12,
+};
+
+/**
+ * Ekstraksi komponen tanggal (hari, bulan, tahun) dari berbagai format masukan:
+ * - Date object
+ * - Excel serial date number (misal 46252)
+ * - Format ISO (YYYY-MM-DD)
+ * - Format Indonesia / standar (DD/MM/YYYY atau DD-MM-YYYY)
+ * - Format US Sheets (M/D/YYYY jika p2 > 12)
+ * - Format Teks (misal: 10 Agustus 2026)
+ */
+export function parseDateParts(
+  val: string | number | Date | undefined | null
+): { day: number; month: number; year: number } | null {
+  if (val === undefined || val === null) return null;
+
+  // 1. Date object
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return null;
+    // Jika jam UTC tepat 00:00 (khas pembacaan cell tanggal tanpa jam di ExcelJS)
+    const isUtcMidnight = val.getUTCHours() === 0 && val.getUTCMinutes() === 0;
+    return {
+      day: isUtcMidnight ? val.getUTCDate() : val.getDate(),
+      month: isUtcMidnight ? val.getUTCMonth() + 1 : val.getMonth() + 1,
+      year: isUtcMidnight ? val.getUTCFullYear() : val.getFullYear(),
+    };
+  }
+
+  // 2. Excel Serial Number
   if (typeof val === 'number') {
-    if (val > 30000 && val < 60000) {
-      // Excel serial date to epoch
-      return (val - 25569) * 86400 * 1000;
+    if (val > 1000 && val < 100000) {
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+      const ms = Math.round(val * 86400 * 1000);
+      const d = new Date(excelEpoch.getTime() + ms);
+      return {
+        day: d.getUTCDate(),
+        month: d.getUTCMonth() + 1,
+        year: d.getUTCFullYear(),
+      };
     }
-    return val;
+    return null;
   }
+
   const str = String(val).trim();
-  if (!str) return 0;
+  if (!str) return null;
 
-  // Format: YYYY-MM-DD
-  if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(str)) {
-    const parts = str.split(/[-/.]/);
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10) - 1;
-    const d = parseInt(parts[2], 10);
-    return new Date(y, m, d).getTime();
+  // 3. String numeric Excel serial (misal "46252")
+  if (/^\d{5}(\.\d+)?$/.test(str)) {
+    const num = parseFloat(str);
+    if (!isNaN(num) && num > 1000 && num < 100000) {
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+      const ms = Math.round(num * 86400 * 1000);
+      const d = new Date(excelEpoch.getTime() + ms);
+      return {
+        day: d.getUTCDate(),
+        month: d.getUTCMonth() + 1,
+        year: d.getUTCFullYear(),
+      };
+    }
   }
 
-  // Format: M/D/YYYY or D/M/YYYY
-  const slashParts = str.split(/[-/.]/);
-  if (slashParts.length >= 3) {
-    const p1 = parseInt(slashParts[0], 10);
-    const p2 = parseInt(slashParts[1], 10);
-    let p3 = parseInt(slashParts[2], 10);
-    if (p3 < 100) p3 += 2000;
-
-    // If p1 > 12, p1 is definitely day (DD/MM/YYYY)
-    if (p1 > 12) {
-      return new Date(p3, p2 - 1, p1).getTime();
+  // 4. Format ISO: YYYY-MM-DD atau YYYY/MM/DD
+  const isoMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (isoMatch) {
+    const y = parseInt(isoMatch[1], 10);
+    const m = parseInt(isoMatch[2], 10);
+    const d = parseInt(isoMatch[3], 10);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return { day: d, month: m, year: y };
     }
-    // If p2 > 12, p2 is definitely day (MM/DD/YYYY)
-    if (p2 > 12) {
-      return new Date(p3, p1 - 1, p2).getTime();
-    }
-    // Default US style MM/DD/YYYY as commonly exported by Excel/Google Sheets
-    return new Date(p3, p1 - 1, p2).getTime();
   }
 
+  // 5. Format teks dengan nama bulan (misal "10 Agustus 2026", "10-Agu-2026")
+  const textMonthMatch = str.match(/^(\d{1,2})\s*[-/\s]\s*([A-Za-z]+)\s*[-/\s]\s*(\d{2,4})/);
+  if (textMonthMatch) {
+    const d = parseInt(textMonthMatch[1], 10);
+    const mKey = textMonthMatch[2].toLowerCase();
+    const m = INDO_MONTHS[mKey] || INDO_MONTHS[mKey.slice(0, 3)];
+    let y = parseInt(textMonthMatch[3], 10);
+    if (y < 100) y += 2000;
+    if (m && d >= 1 && d <= 31) {
+      return { day: d, month: m, year: y };
+    }
+  }
+
+  // 5b. Format teks dengan nama bulan tanpa tahun (misal "10 Agustus", "10-Agu")
+  const textMonthNoYearMatch = str.match(/^(\d{1,2})\s*[-/\s]\s*([A-Za-z]+)$/);
+  if (textMonthNoYearMatch) {
+    const d = parseInt(textMonthNoYearMatch[1], 10);
+    const mKey = textMonthNoYearMatch[2].toLowerCase();
+    const m = INDO_MONTHS[mKey] || INDO_MONTHS[mKey.slice(0, 3)];
+    if (m && d >= 1 && d <= 31) {
+      return { day: d, month: m, year: 2026 };
+    }
+  }
+
+  // 6. Format 3 bagian angka dengan pemisah [/.-]: DD/MM/YYYY atau MM/DD/YYYY
+  const partsMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/);
+  if (partsMatch) {
+    const p1 = parseInt(partsMatch[1], 10);
+    const p2 = parseInt(partsMatch[2], 10);
+    let y = parseInt(partsMatch[3], 10);
+    if (y < 100) y += 2000;
+
+    let day = p1;
+    let month = p2;
+
+    // Jika p2 > 12 dan p1 <= 12: format US M/D/YYYY (contoh: 8/20/2026 -> bln 8, tgl 20)
+    if (p2 > 12 && p1 <= 12) {
+      day = p2;
+      month = p1;
+    } else if (p1 > 12 && p2 <= 12) {
+      // Format Indonesia DD/MM/YYYY (contoh: 20/08/2026 -> tgl 20, bln 8)
+      day = p1;
+      month = p2;
+    } else {
+      // Kedua angka <= 12 (contoh: 10/08/2026):
+      // Sesuai standar Indonesia / PLN, angka pertama adalah TANGGAL (DD) dan kedua adalah BULAN (MM)
+      day = p1;
+      month = p2;
+    }
+
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return { day, month, year: y };
+    }
+  }
+
+  // 6b. Format 2 bagian angka tanpa tahun (misal "10/08" atau "10-08" atau "20/8")
+  const twoPartsMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})$/);
+  if (twoPartsMatch) {
+    const p1 = parseInt(twoPartsMatch[1], 10);
+    const p2 = parseInt(twoPartsMatch[2], 10);
+    let day = p1;
+    let month = p2;
+    if (p2 > 12 && p1 <= 12) {
+      day = p2;
+      month = p1;
+    }
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return { day, month, year: 2026 };
+    }
+  }
+
+  // 7. Fallback parse via Date.parse
   const parsed = Date.parse(str);
-  return isNaN(parsed) ? 0 : parsed;
+  if (!isNaN(parsed)) {
+    const d = new Date(parsed);
+    return {
+      day: d.getDate(),
+      month: d.getMonth() + 1,
+      year: d.getFullYear(),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Format tanggal selalu menjadi DD/MM/YYYY (contoh: 10/08/2026)
+ */
+export function formatTanggalDDMMYYYY(val: string | number | Date | undefined | null): string {
+  if (val === undefined || val === null) return '';
+  const parts = parseDateParts(val);
+  if (!parts) {
+    const s = String(val).trim();
+    return s;
+  }
+  const dd = String(parts.day).padStart(2, '0');
+  const mm = String(parts.month).padStart(2, '0');
+  const yyyy = String(parts.year).padStart(4, '0');
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+export function parseDateTimestamp(val: string | number | Date | undefined | null): number {
+  if (val === undefined || val === null) return 0;
+  const parts = parseDateParts(val);
+  if (!parts) return 0;
+  return new Date(parts.year, parts.month - 1, parts.day).getTime();
 }
 
 export function compareTanggal(a: { tanggal?: string }, b: { tanggal?: string }): number {
@@ -312,7 +500,7 @@ export function assignAutoSequentialTimes(
 
   records.forEach((rec) => {
     const fKey = (rec.feeder || 'FEEDER').trim().toUpperCase();
-    const tKey = (rec.tanggal || 'TGL').trim();
+    const tKey = formatTanggalDDMMYYYY(rec.tanggal) || (rec.tanggal || 'TGL').trim();
 
     if (!feederGroups.has(fKey)) {
       feederGroups.set(fKey, new Map());
