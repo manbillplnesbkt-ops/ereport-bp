@@ -171,7 +171,7 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
             <Search className="w-3.5 h-3.5 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="CARI GARDU / LOKASI..."
+              placeholder="CARI NO. GARDU / PENYULANG..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 pr-3 py-1.5 text-xs font-mono uppercase bg-white/5 border border-white/20 text-white placeholder-white/30 focus:border-[#00FF66] outline-none transition-colors w-52 sm:w-64"
@@ -257,7 +257,6 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
                   NO.
                 </th>
                 <th
-                  colSpan={2}
                   className="border border-slate-900 px-2 py-1 align-middle"
                 >
                   PHBTR
@@ -317,12 +316,6 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
                   className="border border-slate-900 px-2 py-1 w-14 align-middle"
                 >
                   No GD
-                </th>
-                <th
-                  rowSpan={2}
-                  className="border border-slate-900 px-2 py-1 w-28 align-middle"
-                >
-                  LOKASI
                 </th>
                 <th
                   rowSpan={2}
@@ -399,7 +392,7 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
               {displayedFeeders.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={29}
+                    colSpan={28}
                     className="border border-slate-900 py-8 text-center text-slate-500 font-medium"
                   >
                     Tidak ada data gardu yang sesuai dengan filter.
@@ -417,7 +410,7 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
                         className="bg-[#222222] text-white hover:bg-black cursor-pointer transition-colors select-none font-black text-xs uppercase tracking-widest"
                       >
                         <td
-                          colSpan={29}
+                          colSpan={28}
                           className="border border-slate-900 py-2 px-3 text-center"
                         >
                           <div className="flex items-center justify-center gap-2.5">
@@ -467,13 +460,6 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
                                   className="border border-slate-900 text-center font-bold align-middle bg-white font-mono"
                                 >
                                   {formatNoGardu(rec.noGardu) || rec.noGardu}
-                                </td>
-                                <td
-                                  rowSpan={totalJurRows + 1}
-                                  className="border border-slate-900 text-left px-2 align-middle bg-white truncate max-w-[140px]"
-                                  title={rec.unit}
-                                >
-                                  {rec.unit}
                                 </td>
                                 <td
                                   rowSpan={totalJurRows + 1}
