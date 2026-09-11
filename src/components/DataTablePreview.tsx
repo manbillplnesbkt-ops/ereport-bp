@@ -7,7 +7,10 @@ import {
   SortOrderMode,
   formatNoGardu,
   formatTanggalDDMMYYYY,
+  getUlpSignatureLabel,
+  getSignatureForUlp,
 } from '../types/trafo';
+import { UlpSignatureManager } from './UlpSignatureManager';
 import {
   Search,
   ChevronDown,
@@ -19,6 +22,7 @@ import {
   Clock,
   ArrowUpDown,
   Shuffle,
+  PenTool,
 } from 'lucide-react';
 
 interface DataTablePreviewProps {
@@ -41,6 +45,13 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedFeeders, setExpandedFeeders] = useState<Record<string, boolean>>({});
   const [activeSheetTab, setActiveSheetTab] = useState<string>('ALL');
+  const [showSigSettings, setShowSigSettings] = useState<boolean>(false);
+
+  const uniqueUnits = useMemo(() => {
+    return Array.from(
+      new Set(records.map((r) => r.unit).filter((u): u is string => Boolean(u && u.trim() !== '')))
+    );
+  }, [records]);
 
   const currentSortMode: SortOrderMode = config.sortMode || 'TGL_THEN_NOGD';
 
@@ -161,7 +172,23 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
               className="px-2.5 py-1 text-[11px] font-mono uppercase font-bold bg-white/5 hover:bg-[#00FF66]/10 text-white/80 hover:text-[#00FF66] border border-white/20 hover:border-[#00FF66]/40 flex items-center gap-1.5 transition-colors"
             >
               <Shuffle className="w-3 h-3 text-[#00FF66]" />
-              <span>Acak Ulang Jam (10-18 &amp; 19-23)</span>
+              <span>Acak Jam (10-18 &amp; 19-23)</span>
+            </button>
+          )}
+
+          {/* Signature / Pengesahan Settings Toggle Button */}
+          {onChangeConfig && (
+            <button
+              onClick={() => setShowSigSettings((prev) => !prev)}
+              title="Pengaturan Pedoman Pengesahan & Tanda Tangan Akhir Tabel: ULP, TL Teknik, Pengatur, Kota, Tanggal Cetak"
+              className={`px-2.5 py-1 text-[11px] font-mono uppercase font-bold flex items-center gap-1.5 transition-colors border ${
+                showSigSettings
+                  ? 'bg-[#00FF66] text-black border-[#00FF66] shadow-sm'
+                  : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border-white/20'
+              }`}
+            >
+              <PenTool className={`w-3 h-3 ${showSigSettings ? 'text-black' : 'text-[#00FF66]'}`} />
+              <span>Setting TTD &amp; Pengesahan</span>
             </button>
           )}
         </div>
@@ -186,6 +213,17 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Expandable Signature Settings Bar */}
+      {showSigSettings && onChangeConfig && (
+        <div className="bg-[#141414] border-b border-white/15 px-4 sm:px-6 py-4 transition-all">
+          <UlpSignatureManager
+            config={config}
+            onChangeConfig={onChangeConfig}
+            detectedUnits={uniqueUnits}
+          />
+        </div>
+      )}
 
       {/* Feeder Sheet Tabs bar (Multi-sheet Excel Preview) */}
       <div className="bg-[#0B0B0B] px-4 py-2 border-b border-white/10 flex items-center gap-2 overflow-x-auto">
@@ -751,6 +789,52 @@ export const DataTablePreview: React.FC<DataTablePreviewProps> = ({
                             </React.Fragment>
                           );
                         })}
+
+                      {/* Tanda Tangan / Pengesahan di Akhir Setiap Tabel Feeder */}
+                      {!isCollapsed && items.length > 0 && (() => {
+                        const feederUnit = items.find((r) => r.unit && r.unit.trim() !== '')?.unit || config.ulpUnit;
+                        const sig = getSignatureForUlp(feederUnit, config);
+                        return (
+                          <tr>
+                            <td
+                              colSpan={28}
+                              className="border border-slate-900 bg-white p-6"
+                            >
+                              <div className="flex flex-col md:flex-row items-center justify-between px-6 md:px-16 py-4 gap-8 text-black font-sans">
+                                {/* Blok Kiri: Menyetujui */}
+                                <div className="text-center w-72 space-y-1">
+                                  <p className="text-xs text-slate-800">Menyetujui,</p>
+                                  <p className="text-xs text-slate-900 font-medium">
+                                    PT. PLN (Persero) {getUlpSignatureLabel(sig.ulpName)}
+                                  </p>
+                                  <p className="text-xs text-slate-800">TL. Teknik</p>
+                                  <div className="h-16 flex items-center justify-center text-[10px] text-slate-400 italic">
+                                    [Ruang Tanda Tangan &amp; Cap Stempel]
+                                  </div>
+                                  <p className="text-sm font-bold text-black tracking-wider uppercase">
+                                    {sig.namaTlTeknik || '<<NAMA TL TEKNIK>>'}
+                                  </p>
+                                </div>
+
+                                {/* Blok Kanan: Pengatur */}
+                                <div className="text-center w-72 space-y-1">
+                                  <p className="text-xs text-slate-900 font-medium">
+                                    {sig.kota || '<<KOTA>>'}, {sig.tanggalCetak || '<<TANGGAL CETAK>>'}
+                                  </p>
+                                  <p className="text-xs text-slate-800">PLN Electricity services</p>
+                                  <p className="text-xs text-slate-800">Pengatur</p>
+                                  <div className="h-16 flex items-center justify-center text-[10px] text-slate-400 italic">
+                                    [Ruang Tanda Tangan &amp; Cap Stempel]
+                                  </div>
+                                  <p className="text-sm font-bold text-black tracking-wider uppercase">
+                                    {sig.namaPengatur || '<<PENGATUR>>'}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })()}
                     </React.Fragment>
                   );
                 })

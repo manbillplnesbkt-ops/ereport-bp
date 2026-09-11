@@ -7,6 +7,8 @@ import {
   assignAutoSequentialTimes,
   formatNoGardu,
   formatTanggalDDMMYYYY,
+  getUlpSignatureLabel,
+  getSignatureForUlp,
 } from '../types/trafo';
 
 // Helper to sanitize and deduplicate Excel worksheet names
@@ -285,7 +287,7 @@ function populateFeederWorksheet(
     ws.mergeCells(startRow, 1, endRow, 1);
     const noC = ws.getCell(startRow, 1);
     noC.value = sheetIndex++;
-    noC.font = { name: 'Arial', size: 9, bold: true };
+    noC.font = { name: 'Arial', size: 10, bold: true };
     noC.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // 2. No GD (Sorted A - Z) - Format 4 Digit (contoh: 0018)
@@ -293,35 +295,35 @@ function populateFeederWorksheet(
     const gdC = ws.getCell(startRow, 2);
     gdC.value = formatNoGardu(rec.noGardu);
     gdC.numFmt = '@';
-    gdC.font = { name: 'Arial', size: 9, bold: true };
+    gdC.font = { name: 'Arial', size: 10, bold: true };
     gdC.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // 3. DAYA TRAFO (kVA)
     ws.mergeCells(startRow, 3, endRow, 3);
     const dayaC = ws.getCell(startRow, 3);
     dayaC.value = toNum(rec.kvaGardu);
-    dayaC.font = { name: 'Arial', size: 9 };
+    dayaC.font = { name: 'Arial', size: 10 };
     dayaC.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // 4. TGL / BLN
     ws.mergeCells(startRow, 4, endRow, 4);
     const tglC = ws.getCell(startRow, 4);
     tglC.value = formatTanggalDDMMYYYY(rec.tanggal);
-    tglC.font = { name: 'Arial', size: 9 };
+    tglC.font = { name: 'Arial', size: 10 };
     tglC.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // 5. JAM Siang
     ws.mergeCells(startRow, 5, endRow, 5);
     const jamSC = ws.getCell(startRow, 5);
     jamSC.value = rec.jamSiang || config.defaultJamSiang || '10:00';
-    jamSC.font = { name: 'Arial', size: 9 };
+    jamSC.font = { name: 'Arial', size: 10 };
     jamSC.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // 17. JAM Malam
     ws.mergeCells(startRow, 17, endRow, 17);
     const jamMC = ws.getCell(startRow, 17);
     jamMC.value = rec.jamMalam || config.defaultJamMalam || '19:00';
-    jamMC.font = { name: 'Arial', size: 9 };
+    jamMC.font = { name: 'Arial', size: 10 };
     jamMC.alignment = { horizontal: 'center', vertical: 'middle' };
 
     // Jurusan definitions: REL, I, II, III, (+ IV if exists)
@@ -409,7 +411,7 @@ function populateFeederWorksheet(
       // 6. Jur. Siang
       const jSC = ws.getCell(rowNum, 6);
       jSC.value = jRow.name;
-      jSC.font = { name: 'Arial', size: 8, bold: jRow.name === 'REL' };
+      jSC.font = { name: 'Arial', size: 10, bold: jRow.name === 'REL' };
       jSC.alignment = { horizontal: 'center', vertical: 'middle' };
 
       // 7-10: Siang Beban (R, S, T, N) from Sheet TEMUAN GARDU TIER 1 DAN TIER 1&
@@ -417,7 +419,7 @@ function populateFeederWorksheet(
         const c = ws.getCell(rowNum, 7 + bIdx);
         const num = toNum(val);
         c.value = num;
-        c.font = { name: 'Arial', size: 8 };
+        c.font = { name: 'Arial', size: 10 };
         c.alignment = { horizontal: 'right', vertical: 'middle' };
         if (typeof num === 'number') {
           c.numFmt = '#,##0.0';
@@ -429,7 +431,7 @@ function populateFeederWorksheet(
         const c = ws.getCell(rowNum, 11 + vIdx);
         const num = toNum(val);
         c.value = num;
-        c.font = { name: 'Arial', size: 8 };
+        c.font = { name: 'Arial', size: 10 };
         c.alignment = { horizontal: 'center', vertical: 'middle' };
         if (typeof num === 'number') {
           c.numFmt = '#,##0';
@@ -439,7 +441,7 @@ function populateFeederWorksheet(
       // 18. Jur. Malam
       const jMC = ws.getCell(rowNum, 18);
       jMC.value = jRow.name;
-      jMC.font = { name: 'Arial', size: 8, bold: jRow.name === 'REL' };
+      jMC.font = { name: 'Arial', size: 10, bold: jRow.name === 'REL' };
       jMC.alignment = { horizontal: 'center', vertical: 'middle' };
 
       // 19-22: Malam Beban (R, S, T, N) from Sheet BEBAN PUNCAK GARDU
@@ -447,7 +449,7 @@ function populateFeederWorksheet(
         const c = ws.getCell(rowNum, 19 + bIdx);
         const num = toNum(val);
         c.value = num;
-        c.font = { name: 'Arial', size: 8 };
+        c.font = { name: 'Arial', size: 10 };
         c.alignment = { horizontal: 'right', vertical: 'middle' };
         if (typeof num === 'number') {
           c.numFmt = '#,##0.0';
@@ -459,7 +461,7 @@ function populateFeederWorksheet(
         const c = ws.getCell(rowNum, 23 + vIdx);
         const num = toNum(val);
         c.value = num;
-        c.font = { name: 'Arial', size: 8 };
+        c.font = { name: 'Arial', size: 10 };
         c.alignment = { horizontal: 'center', vertical: 'middle' };
         if (typeof num === 'number') {
           c.numFmt = '#,##0';
@@ -474,6 +476,86 @@ function populateFeederWorksheet(
 
     curRow = endRow + 1;
   }
+
+  // --- BAGIAN PENGESAHAN / TANDA TANGAN (AKHIR SETIAP TABEL) ---
+  const sigInfo = getSignatureForUlp(ulpTitle || config.ulpUnit, config);
+  const ulpSignature = getUlpSignatureLabel(sigInfo.ulpName);
+  const namaTlTeknik = sigInfo.namaTlTeknik;
+  const namaPengatur = sigInfo.namaPengatur;
+  const kota = sigInfo.kota;
+  const tanggalCetak = sigInfo.tanggalCetak;
+
+  const sigFontNormal: Partial<ExcelJS.Font> = { name: 'Arial', size: 10 };
+  const sigFontBold: Partial<ExcelJS.Font> = { name: 'Arial', size: 10, bold: true };
+  const sigAlign: Partial<ExcelJS.Alignment> = { horizontal: 'center', vertical: 'middle' };
+
+  // Baris kosong pemisah setelah tabel
+  curRow += 1;
+
+  // Baris 1: "Menyetujui," & "<<KOTA>>, <<TANGGAL CETAK>>"
+  ws.getRow(curRow).height = 18;
+  ws.mergeCells(curRow, 3, curRow, 8);
+  const c1 = ws.getCell(curRow, 3);
+  c1.value = 'Menyetujui,';
+  c1.font = sigFontNormal;
+  c1.alignment = sigAlign;
+
+  ws.mergeCells(curRow, 22, curRow, 28);
+  const r1 = ws.getCell(curRow, 22);
+  r1.value = `${kota}, ${tanggalCetak}`;
+  r1.font = sigFontNormal;
+  r1.alignment = sigAlign;
+
+  // Baris 2: "PT. PLN (Persero) <<ULP>>" & "PLN Electricity services"
+  curRow += 1;
+  ws.getRow(curRow).height = 18;
+  ws.mergeCells(curRow, 3, curRow, 8);
+  const c2 = ws.getCell(curRow, 3);
+  c2.value = `PT. PLN (Persero) ${ulpSignature}`;
+  c2.font = sigFontNormal;
+  c2.alignment = sigAlign;
+
+  ws.mergeCells(curRow, 22, curRow, 28);
+  const r2 = ws.getCell(curRow, 22);
+  r2.value = 'PLN Electricity services';
+  r2.font = sigFontNormal;
+  r2.alignment = sigAlign;
+
+  // Baris 3: "TL. Teknik" & "Pengatur"
+  curRow += 1;
+  ws.getRow(curRow).height = 18;
+  ws.mergeCells(curRow, 3, curRow, 8);
+  const c3 = ws.getCell(curRow, 3);
+  c3.value = 'TL. Teknik';
+  c3.font = sigFontNormal;
+  c3.alignment = sigAlign;
+
+  ws.mergeCells(curRow, 22, curRow, 28);
+  const r3 = ws.getCell(curRow, 22);
+  r3.value = 'Pengatur';
+  r3.font = sigFontNormal;
+  r3.alignment = sigAlign;
+
+  // Baris 4-7: Ruang kosong tanda tangan & stempel (4 baris)
+  for (let s = 0; s < 4; s++) {
+    curRow += 1;
+    ws.getRow(curRow).height = 18;
+  }
+
+  // Baris 8: "<<NAMA TL TEKNIK>>" & "<<PENGATUR>>" (Tebal / Bold)
+  curRow += 1;
+  ws.getRow(curRow).height = 20;
+  ws.mergeCells(curRow, 3, curRow, 8);
+  const c4 = ws.getCell(curRow, 3);
+  c4.value = namaTlTeknik;
+  c4.font = sigFontBold;
+  c4.alignment = sigAlign;
+
+  ws.mergeCells(curRow, 22, curRow, 28);
+  const r4 = ws.getCell(curRow, 22);
+  r4.value = namaPengatur;
+  r4.font = sigFontBold;
+  r4.alignment = sigAlign;
 }
 
 export async function generateTrafoExcelReport(

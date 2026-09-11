@@ -6,6 +6,8 @@ import {
   assignAutoSequentialTimes,
   formatNoGardu,
   formatTanggalDDMMYYYY,
+  DEFAULT_KNOWN_ULPS,
+  UlpSignatureItem,
 } from './types/trafo';
 import {
   DEFAULT_RAW_CSV,
@@ -35,6 +37,11 @@ export default function App() {
 
   const [config, setConfig] = useState<ReportConfig>(() => {
     const firstUnit = initialRecords.find((r) => r.unit && r.unit.trim() !== '')?.unit;
+    const initialSignatures: Record<string, UlpSignatureItem> = {};
+    DEFAULT_KNOWN_ULPS.forEach((item) => {
+      initialSignatures[item.ulpName] = { ...item };
+    });
+
     return {
       judul: 'HASIL PENGUKURAN BEBAN DAN TEGANGAN (PUNCAK) TRAFO DISTRIBUSI',
       bulanTahun: 'BULAN AGUSTUS 2026',
@@ -47,6 +54,12 @@ export default function App() {
       jamAkhirSiang: '18:00',
       waktuTarget: 'MALAM',
       sortMode: 'TGL_THEN_NOGD',
+      // Pedoman Pengesahan & Tanda Tangan:
+      namaTlTeknik: '<<NAMA TL TEKNIK>>',
+      namaPengatur: '<<PENGATUR>>',
+      kota: 'BUKITTINGGI',
+      tanggalCetak: '31 AGUSTUS 2026',
+      ulpSignatures: initialSignatures,
     };
   });
 

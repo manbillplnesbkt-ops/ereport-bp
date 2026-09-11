@@ -97,9 +97,137 @@ export interface ReportConfig {
   sheetMalamName?: string; // 'BEBAN PUNCAK GARDU'
   sheetSiangName?: string; // 'TEMUAN GARDU TIER 1 DAN TIER 1&'
   sortMode?: SortOrderMode;
+
+  // Setting Pedoman Pengesahan & Tanda Tangan (Akhir Tabel):
+  namaTlTeknik?: string;
+  namaPengatur?: string;
+  kota?: string;
+  tanggalCetak?: string;
+
+  // Setting Tanda Tangan Khusus / Lengkap untuk Semua ULP
+  ulpSignatures?: Record<string, UlpSignatureItem>;
+}
+
+export interface UlpSignatureItem {
+  ulpName: string;
+  namaTlTeknik: string;
+  namaPengatur: string;
+  kota: string;
+  tanggalCetak: string;
+}
+
+export const DEFAULT_KNOWN_ULPS: UlpSignatureItem[] = [
+  {
+    ulpName: 'ULP BUKITTINGGI',
+    namaTlTeknik: '<<NAMA TL TEKNIK>>',
+    namaPengatur: '<<PENGATUR>>',
+    kota: 'BUKITTINGGI',
+    tanggalCetak: '31 AGUSTUS 2026',
+  },
+  {
+    ulpName: 'ULP BASO',
+    namaTlTeknik: '<<NAMA TL TEKNIK>>',
+    namaPengatur: '<<PENGATUR>>',
+    kota: 'BASO',
+    tanggalCetak: '31 AGUSTUS 2026',
+  },
+  {
+    ulpName: 'ULP PADANG PANJANG',
+    namaTlTeknik: '<<NAMA TL TEKNIK>>',
+    namaPengatur: '<<PENGATUR>>',
+    kota: 'PADANG PANJANG',
+    tanggalCetak: '31 AGUSTUS 2026',
+  },
+  {
+    ulpName: 'ULP LUBUK SIKAPING',
+    namaTlTeknik: '<<NAMA TL TEKNIK>>',
+    namaPengatur: '<<PENGATUR>>',
+    kota: 'LUBUK SIKAPING',
+    tanggalCetak: '31 AGUSTUS 2026',
+  },
+  {
+    ulpName: 'ULP LUBUK BASUNG',
+    namaTlTeknik: '<<NAMA TL TEKNIK>>',
+    namaPengatur: '<<PENGATUR>>',
+    kota: 'LUBUK BASUNG',
+    tanggalCetak: '31 AGUSTUS 2026',
+  },
+  {
+    ulpName: 'ULP SIMPANG EMPAT',
+    namaTlTeknik: '<<NAMA TL TEKNIK>>',
+    namaPengatur: '<<PENGATUR>>',
+    kota: 'SIMPANG EMPAT',
+    tanggalCetak: '31 AGUSTUS 2026',
+  },
+  {
+    ulpName: 'ULP KOTO TUO',
+    namaTlTeknik: '<<NAMA TL TEKNIK>>',
+    namaPengatur: '<<PENGATUR>>',
+    kota: 'KOTO TUO',
+    tanggalCetak: '31 AGUSTUS 2026',
+  },
+];
+
+export function normalizeUlpKey(val: string | undefined): string {
+  if (!val) return '';
+  const clean = val.trim().toUpperCase();
+  if (clean.startsWith('ULP ')) return clean;
+  if (clean.startsWith('ULP')) return `ULP ${clean.substring(3).trim()}`;
+  return `ULP ${clean}`;
+}
+
+export function getSignatureForUlp(
+  unitOrUlp: string | undefined,
+  config: ReportConfig
+): UlpSignatureItem {
+  const normKey = normalizeUlpKey(unitOrUlp || config.ulpUnit || 'ULP BUKITTINGGI');
+
+  // 1. Cek konfigurasi spesifik pada ulpSignatures
+  if (config.ulpSignatures && config.ulpSignatures[normKey]) {
+    const item = config.ulpSignatures[normKey];
+    return {
+      ulpName: item.ulpName || normKey,
+      namaTlTeknik: item.namaTlTeknik || config.namaTlTeknik || '<<NAMA TL TEKNIK>>',
+      namaPengatur: item.namaPengatur || config.namaPengatur || '<<PENGATUR>>',
+      kota: item.kota || config.kota || normKey.replace('ULP ', ''),
+      tanggalCetak: item.tanggalCetak || config.tanggalCetak || '31 AGUSTUS 2026',
+    };
+  }
+
+  // 2. Cek default known ULPs
+  const known = DEFAULT_KNOWN_ULPS.find((k) => k.ulpName === normKey);
+  if (known) {
+    return {
+      ulpName: known.ulpName,
+      namaTlTeknik: config.namaTlTeknik || known.namaTlTeknik,
+      namaPengatur: config.namaPengatur || known.namaPengatur,
+      kota: known.kota || config.kota || 'BUKITTINGGI',
+      tanggalCetak: config.tanggalCetak || known.tanggalCetak,
+    };
+  }
+
+  // 3. Fallback umum
+  const derivedKota = normKey.replace('ULP ', '').trim() || config.kota || 'BUKITTINGGI';
+  return {
+    ulpName: normKey || 'ULP BUKITTINGGI',
+    namaTlTeknik: config.namaTlTeknik || '<<NAMA TL TEKNIK>>',
+    namaPengatur: config.namaPengatur || '<<PENGATUR>>',
+    kota: config.kota || derivedKota,
+    tanggalCetak: config.tanggalCetak || '31 AGUSTUS 2026',
+  };
 }
 
 export type SortOrderMode = 'TGL_THEN_NOGD' | 'NOGD_THEN_TGL';
+
+export function getUlpSignatureLabel(ulpInput: string | undefined): string {
+  const val = (ulpInput || '').trim();
+  if (!val) return '<<ULP>>';
+  if (val.startsWith('<<') && val.endsWith('>>')) return val;
+  if (val.toUpperCase().startsWith('ULP')) {
+    return val.toUpperCase();
+  }
+  return `ULP ${val.toUpperCase()}`;
+}
 
 export function formatUlpName(unitDesc: string | undefined): string {
   const trimmed = (unitDesc || '').trim();

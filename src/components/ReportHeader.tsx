@@ -8,8 +8,10 @@ import {
   Link,
   CheckCircle2,
   AlertCircle,
+  PenTool,
 } from 'lucide-react';
-import { ReportConfig, formatUlpName } from '../types/trafo';
+import { ReportConfig, formatUlpName, getUlpSignatureLabel } from '../types/trafo';
+import { UlpSignatureManager } from './UlpSignatureManager';
 
 interface ReportHeaderProps {
   config: ReportConfig;
@@ -132,10 +134,10 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
                     ? 'bg-white/20 text-[#00FF66] border-[#00FF66]'
                     : 'bg-white/5 text-white/80 hover:text-white hover:bg-white/10 border-white/20'
                 }`}
-                title="Pengaturan Kop Laporan & Jam"
+                title="Pengaturan Kop Laporan, Jam & Pedoman Tanda Tangan Semua ULP"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 text-[#00FF66]" />
-                <span>Kop Laporan</span>
+                <span>Setting Kop &amp; TTD Semua ULP</span>
               </button>
 
               <label className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wider text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/20 transition-colors cursor-pointer" title="Import file Excel (.xlsx, .xls) atau CSV">
@@ -383,6 +385,15 @@ export const ReportHeader: React.FC<ReportHeaderProps> = ({
                   Sesuai format PLN
                 </div>
               </div>
+            </div>
+
+            {/* PEDOMAN PENGISIAN PENGESAHAN & TANDA TANGAN (SEMUA ULP) */}
+            <div className="pt-4 border-t border-white/10">
+              <UlpSignatureManager
+                config={config}
+                onChangeConfig={onChangeConfig}
+                detectedUnits={units}
+              />
             </div>
           </div>
         </div>
